@@ -1,18 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Task, Category, Subtask } from '../api/types';
 import { useAuth } from './useAuth';
-
-// LocalStorage-based data store (replace with Base44 SDK for production)
-const TASKS_KEY = 'todo_tasks';
-const CATEGORIES_KEY = 'todo_categories';
-const SUBTASKS_KEY = 'todo_subtasks';
-
-function load<T>(key: string): T[] {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
-}
-function save<T>(key: string, data: T[]) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+import { callApi } from '../api/client';
 
 export function useData() {
   const { user } = useAuth();
@@ -21,103 +10,90 @@ export function useData() {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     if (!user) return;
-    const allTasks = load<Task>(TASKS_KEY).filter(t => t.user_id === user.id);
-    const allCategories = load<Category>(CATEGORIES_KEY).filter(c => c.user_id === user.id);
-    const allSubtasks = load<Subtask>(SUBTASKS_KEY);
-    setTasks(allTasks.sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime()));
-    setCategories(allCategories);
-    setSubtasks(allSubtasks);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const [{ tasks }, { categories }, { subtasks }] = await Promise.all([
+        callApi('tasks', { action: 'getTasks', userId: user.id }),
+        callApi('tasks', { action: 'getCategories', userId: user.id }),
+        callApi('tasks', { action: 'getSubtasksByUser', userId: user.id }),
+      ]);
+      // Filter out memos from tasks
+      setTasks((tasks as any[]).filter((t: any) => t.status !== 'memo').sort(
+        (a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime()
+      ));
+      setCategories(categories as Category[]);
+      setSubtasks(subtasks as Subtask[]);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { reload(); }, [reload]);
 
   // --- Tasks ---
-  const createTask = (data: Omit<Task, 'id' | 'user_id' | 'created_date' | 'updated_date'>) => {
-    const all = load<Task>(TASKS_KEY);
-    const now = new Date().toISOString();
-    const task: Task = { ...data, id: crypto.randomUUID(), user_id: user!.id, created_date: now, updated_date: now };
-    all.push(task);
-    save(TASKS_KEY, all);
-    reload();
+  const createTask = async (data: Omit<Task, 'id' | 'user_id' | 'created_date' | 'updated_date'>) => {
+    const { task } = await callApi('tasks', { action: 'createTask', userId: user!.id, data });
+    setTasks(prev => [task, ...prev]);
     return task;
   };
 
-  const updateTask = (id: string, data: Partial<Task>) => {
-    const all = load<Task>(TASKS_KEY);
-    const idx = all.findIndex(t => t.id === id);
-    if (idx === -1) return;
-    all[idx] = { ...all[idx], ...data, updated_date: new Date().toISOString() };
-    save(TASKS_KEY, all);
-    reload();
+  const updateTask = async (id: string, data: Partial<Task>) => {
+    const { task } = await callApi('tasks', { action: 'updateTask', userId: user!.id, id, data });
+    setTasks(prev => prev.map(t => t.id === id ? task : t));
   };
 
-  const deleteTask = (id: string) => {
-    const all = load<Task>(TASKS_KEY).filter(t => t.id !== id);
-    save(TASKS_KEY, all);
-    // Delete subtasks too
-    const subs = load<Subtask>(SUBTASKS_KEY).filter(s => s.task_id !== id);
-    save(SUBTASKS_KEY, subs);
-    reload();
+  const deleteTask = async (id: string) => {
+    await callApi('tasks', { action: 'deleteTask', userId: user!.id, id });
+    setTasks(prev => prev.filter(t => t.id !== id));
+    setSubtasks(prev => prev.filter(s => s.task_id !== id));
   };
 
-  const toggleTask = (id: string) => {
-    const all = load<Task>(TASKS_KEY);
-    const task = all.find(t => t.id === id);
+  const toggleTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
     if (!task) return;
-    const now = new Date().toISOString();
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-    task.status = newStatus;
-    task.completed_at = newStatus === 'completed' ? now : undefined;
-    task.updated_date = now;
-    save(TASKS_KEY, all);
-    reload();
+    const now = new Date().toISOString();
+    const { task: updated } = await callApi('tasks', {
+      action: 'updateTask',
+      userId: user!.id,
+      id,
+      data: { status: newStatus, completed_at: newStatus === 'completed' ? now : null },
+    });
+    setTasks(prev => prev.map(t => t.id === id ? updated : t));
   };
 
   // --- Categories ---
-  const createCategory = (name: string, color: string) => {
-    const data = { name, color };
-    const all = load<Category>(CATEGORIES_KEY);
-    const cat: Category = { ...data, id: crypto.randomUUID(), user_id: user!.id, created_date: new Date().toISOString() };
-    all.push(cat);
-    save(CATEGORIES_KEY, all);
-    reload();
-    return cat;
+  const createCategory = async (name: string, color: string) => {
+    const { category } = await callApi('tasks', { action: 'createCategory', userId: user!.id, data: { name, color } });
+    setCategories(prev => [...prev, category]);
+    return category;
   };
 
-  const deleteCategory = (id: string) => {
-    const all = load<Category>(CATEGORIES_KEY).filter(c => c.id !== id);
-    save(CATEGORIES_KEY, all);
-    // Unlink tasks
-    const allTasks = load<Task>(TASKS_KEY).map(t => t.category_id === id ? { ...t, category_id: undefined } : t);
-    save(TASKS_KEY, allTasks);
-    reload();
+  const deleteCategory = async (id: string) => {
+    await callApi('tasks', { action: 'deleteCategory', userId: user!.id, id });
+    setCategories(prev => prev.filter(c => c.id !== id));
+    setTasks(prev => prev.map(t => t.category_id === id ? { ...t, category_id: undefined } : t));
   };
 
   // --- Subtasks ---
-  const createSubtask = (taskId: string, title: string) => {
-    const all = load<Subtask>(SUBTASKS_KEY);
-    const sub: Subtask = { id: crypto.randomUUID(), task_id: taskId, title, status: 'pending', created_date: new Date().toISOString() };
-    all.push(sub);
-    save(SUBTASKS_KEY, all);
-    reload();
+  const createSubtask = async (taskId: string, title: string) => {
+    const { subtask } = await callApi('tasks', { action: 'createSubtask', userId: user!.id, data: { taskId, title } });
+    setSubtasks(prev => [...prev, subtask]);
   };
 
-  const toggleSubtask = (id: string) => {
-    const all = load<Subtask>(SUBTASKS_KEY);
-    const sub = all.find(s => s.id === id);
+  const toggleSubtask = async (id: string) => {
+    const sub = subtasks.find(s => s.id === id);
     if (!sub) return;
-    sub.status = sub.status === 'completed' ? 'pending' : 'completed';
-    save(SUBTASKS_KEY, all);
-    reload();
+    const newStatus = sub.status === 'completed' ? 'pending' : 'completed';
+    const { subtask } = await callApi('tasks', { action: 'updateSubtask', userId: user!.id, id, data: { status: newStatus } });
+    setSubtasks(prev => prev.map(s => s.id === id ? subtask : s));
   };
 
-  const deleteSubtask = (id: string) => {
-    const all = load<Subtask>(SUBTASKS_KEY).filter(s => s.id !== id);
-    save(SUBTASKS_KEY, all);
-    reload();
+  const deleteSubtask = async (id: string) => {
+    await callApi('tasks', { action: 'deleteSubtask', userId: user!.id, id });
+    setSubtasks(prev => prev.filter(s => s.id !== id));
   };
 
   const getSubtasksForTask = (taskId: string) => subtasks.filter(s => s.task_id === taskId);

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { callApi } from '../api/client';
 
 interface User {
   id: string;
@@ -15,14 +16,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-// Simulated auth using localStorage (replace with Base44 SDK calls)
-const USERS_KEY = 'todo_users';
-const SESSION_KEY = 'todo_session';
-
-function getUsers(): User[] {
-  try { return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch { return []; }
-}
+const SESSION_KEY = 'todo_session_v2';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -37,23 +31,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const users: Array<User & { password: string }> = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    const found = users.find(u => u.email === email && (u as { password: string }).password === password);
-    if (!found) throw new Error('邮箱或密码错误');
-    const { password: _, ...userData } = found;
-    setUser(userData);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+    const { user } = await callApi('auth', { action: 'login', email, password });
+    setUser(user);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   };
 
   const register = async (email: string, password: string, fullName: string) => {
-    const users: Array<User & { password: string }> = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    if (users.find(u => u.email === email)) throw new Error('该邮箱已被注册');
-    const newUser = { id: crypto.randomUUID(), email, full_name: fullName, password };
-    users.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    const { password: _, ...userData } = newUser;
-    setUser(userData);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+    const { user } = await callApi('auth', { action: 'register', email, password, fullName });
+    setUser(user);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   };
 
   const logout = () => {
