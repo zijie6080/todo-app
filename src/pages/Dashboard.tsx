@@ -3,7 +3,7 @@ import { format, isSameDay, isToday, addMonths, subMonths, startOfMonth, endOfMo
 import { zhCN } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, CheckCircle2, Circle,
-  Trash2, Flag, Tag, StickyNote, Settings, LogOut,
+  Trash2, StickyNote, Settings, LogOut,
   User, Sun, Moon, ChevronDown, Loader2, X, Calendar
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -19,11 +19,7 @@ const PRIORITY_DOT: Record<string, string> = {
   medium: 'bg-amber-400',
   low: 'bg-emerald-400',
 };
-
-const PRIORITY_LABEL: Record<string, string> = {
-  high: '高', medium: '中', low: '低',
-};
-
+const PRIORITY_LABEL: Record<string, string> = { high: '高', medium: '中', low: '低' };
 const PRIORITY_COLOR: Record<string, string> = {
   high: 'bg-red-100 text-red-600',
   medium: 'bg-amber-100 text-amber-600',
@@ -33,7 +29,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const {
-    tasks, categories, subtasks, loading,
+    tasks, categories, loading,
     createTask, updateTask, deleteTask, toggleTask,
     createCategory, deleteCategory,
     createSubtask, toggleSubtask, deleteSubtask,
@@ -70,24 +66,22 @@ export default function Dashboard() {
     weeks.push(week);
   }
 
-  const getTasksForDate = (d: Date) =>
-    tasks.filter(t => t.due_date === format(d, 'yyyy-MM-dd'));
+  const getTasksForDate = (d: Date) => tasks.filter(t => t.due_date === format(d, 'yyyy-MM-dd'));
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayTasks = tasks.filter(t => t.due_date === selectedDateStr);
   const pendingDay = dayTasks.filter(t => t.status === 'pending');
   const completedDay = dayTasks.filter(t => t.status === 'completed');
 
+  const overdueCount = tasks.filter(t =>
+    t.status === 'pending' && t.due_date && t.due_date < format(new Date(), 'yyyy-MM-dd')
+  ).length;
+
   const handleQuickAdd = async () => {
     if (!newTaskTitle.trim()) return;
     setQuickAdding(true);
     try {
-      await createTask({
-        title: newTaskTitle.trim(),
-        status: 'pending',
-        priority: 'medium',
-        due_date: selectedDateStr,
-      } as any);
+      await createTask({ title: newTaskTitle.trim(), status: 'pending', priority: 'medium', due_date: selectedDateStr } as any);
       setNewTaskTitle('');
     } finally { setQuickAdding(false); }
   };
@@ -101,14 +95,6 @@ export default function Dashboard() {
     setShowModal(false);
     setEditingTask(null);
   };
-
-  // All upcoming tasks without a date or future date
-  const upcomingTasks = tasks.filter(t =>
-    t.status === 'pending' && (!t.due_date || t.due_date >= format(new Date(), 'yyyy-MM-dd'))
-  );
-  const overdueCount = tasks.filter(t =>
-    t.status === 'pending' && t.due_date && t.due_date < format(new Date(), 'yyyy-MM-dd')
-  ).length;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -167,7 +153,7 @@ export default function Dashboard() {
               onClick={() => {
                 const name = prompt('分类名称');
                 if (name) {
-                  const colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+                  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
                   createCategory(name, colors[Math.floor(Math.random() * colors.length)]);
                 }
               }}
@@ -180,21 +166,26 @@ export default function Dashboard() {
 
         {/* Bottom controls */}
         <div className="px-4 py-3 border-t border-gray-100 space-y-1">
-          <button onClick={() => setShowMemo(!showMemo)}
-            className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-              showMemo ? 'bg-amber-50 text-amber-700' : 'text-gray-600 hover:bg-gray-100')}>
+          <button
+            onClick={() => setShowMemo(true)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all"
+          >
             <StickyNote className="w-4 h-4" /> 备忘录
           </button>
-          <button onClick={() => setDarkMode(!darkMode)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all">
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all"
+          >
             {darkMode ? <Sun className="w-4 h-4 text-yellow-500" /> : <Moon className="w-4 h-4" />}
             {darkMode ? '浅色模式' : '深色模式'}
           </button>
 
-          {/* User */}
+          {/* User menu */}
           <div className="relative">
-            <button onClick={() => setShowUserMenu(!showUserMenu)}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-all">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-all"
+            >
               <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <User className="w-3.5 h-3.5 text-blue-600" />
               </div>
@@ -205,8 +196,10 @@ export default function Dashboard() {
             </button>
             {showUserMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-slide-up">
-                <button onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
+                <button
+                  onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                >
                   <Settings className="w-4 h-4 text-gray-400" /> 账号设置
                 </button>
                 <div className="border-t border-gray-100" />
@@ -219,244 +212,242 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* ===== MAIN CONTENT ===== */}
-      <main className="flex-1 flex overflow-hidden">
+      {/* ===== MAIN CONTENT (calendar always visible) ===== */}
+      <main className="flex-1 flex overflow-hidden relative">
 
-        {showMemo ? (
-          <div className="flex-1 overflow-auto p-8">
-            <MemoPanel userId={user!.id} />
-          </div>
-        ) : (
-          <>
-            {/* === CALENDAR PANEL === */}
-            <div className="flex-1 flex flex-col overflow-hidden border-r border-gray-100">
-              {/* Month nav */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-white">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {format(currentMonth, 'yyyy年 M月', { locale: zhCN })}
-                  </h1>
-                  <p className="text-sm text-gray-400 mt-0.5">
-                    点击日期查看当天任务
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => { setCurrentMonth(new Date()); setSelectedDate(new Date()); }}
-                    className="px-3 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded-xl transition-colors">今天</button>
-                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Calendar grid */}
-              <div className="flex-1 overflow-auto bg-white">
-                {/* Weekday headers */}
-                <div className="grid grid-cols-7 border-b border-gray-100 sticky top-0 bg-white z-10">
-                  {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map(d => (
-                    <div key={d} className="py-3 text-center text-sm font-semibold text-gray-400">{d}</div>
-                  ))}
-                </div>
-
-                {/* Weeks */}
-                {weeks.map((week, wi) => (
-                  <div key={wi} className="grid grid-cols-7" style={{ minHeight: '100px' }}>
-                    {week.map((d, di) => {
-                      const dayTaskList = getTasksForDate(d);
-                      const pending = dayTaskList.filter(t => t.status === 'pending');
-                      const completed = dayTaskList.filter(t => t.status === 'completed');
-                      const isSelected = isSameDay(d, selectedDate);
-                      const isCurrentMonth = isSameMonth(d, currentMonth);
-                      const todayFlag = isToday(d);
-                      const isWeekend = di >= 5;
-                      const isOverdueDay = d < new Date() && !todayFlag && pending.length > 0;
-
-                      return (
-                        <button
-                          key={di}
-                          onClick={() => setSelectedDate(d)}
-                          className={cn(
-                            'relative p-2 text-left border-b border-r border-gray-50 transition-all duration-150',
-                            'hover:bg-blue-50/60',
-                            isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-300' : '',
-                            !isCurrentMonth ? 'opacity-30' : '',
-                            isWeekend && isCurrentMonth ? 'bg-gray-50/50' : '',
-                          )}
-                        >
-                          {/* Day number */}
-                          <span className={cn(
-                            'inline-flex items-center justify-center w-8 h-8 text-sm font-semibold rounded-full mb-1',
-                            todayFlag ? 'bg-blue-500 text-white shadow-md shadow-blue-200' : 'text-gray-700',
-                            isSelected && !todayFlag ? 'bg-blue-100 text-blue-700' : '',
-                            isWeekend && !todayFlag && !isSelected ? 'text-gray-400' : '',
-                          )}>
-                            {format(d, 'd')}
-                          </span>
-
-                          {/* Task dots / previews */}
-                          <div className="space-y-0.5">
-                            {pending.slice(0, 3).map(t => (
-                              <div key={t.id} className={cn(
-                                'flex items-center gap-1 text-xs rounded-md px-1.5 py-0.5 truncate font-medium',
-                                t.priority === 'high' ? 'bg-red-50 text-red-600' :
-                                t.priority === 'medium' ? 'bg-amber-50 text-amber-700' :
-                                'bg-emerald-50 text-emerald-700'
-                              )}>
-                                <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', PRIORITY_DOT[t.priority])} />
-                                <span className="truncate">{t.title}</span>
-                              </div>
-                            ))}
-                            {pending.length > 3 && (
-                              <div className="text-xs text-gray-400 px-1">+{pending.length - 3} 个</div>
-                            )}
-                            {pending.length === 0 && completed.length > 0 && (
-                              <div className="text-xs text-emerald-500 px-1">✓ {completed.length}</div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+        {/* === CALENDAR PANEL === */}
+        <div className="flex-1 flex flex-col overflow-hidden border-r border-gray-100">
+          {/* Month nav */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-white">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {format(currentMonth, 'yyyy年 M月', { locale: zhCN })}
+              </h1>
+              <p className="text-sm text-gray-400 mt-0.5">点击日期查看当天任务</p>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setCurrentMonth(new Date()); setSelectedDate(new Date()); }}
+                className="px-3 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded-xl transition-colors"
+              >今天</button>
+              <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
 
-            {/* === DAY PANEL === */}
-            <div className="w-80 flex-shrink-0 flex flex-col bg-white overflow-hidden">
-              {/* Day header */}
-              <div className="px-5 py-5 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {isToday(selectedDate) ? '今天' : format(selectedDate, 'M月d日', { locale: zhCN })}
-                    </h2>
-                    <p className="text-sm text-gray-400 mt-0.5">
-                      {format(selectedDate, 'EEEE', { locale: zhCN })} · {pendingDay.length} 待办
-                      {completedDay.length > 0 ? ` · ${completedDay.length} 完成` : ''}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => { setEditingTask(null); setShowModal(true); }}
-                    className="w-9 h-9 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md shadow-blue-200 flex items-center justify-center active:scale-95"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
+          {/* Calendar grid */}
+          <div className="flex-1 overflow-auto bg-white">
+            <div className="grid grid-cols-7 border-b border-gray-100 sticky top-0 bg-white z-10">
+              {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map(d => (
+                <div key={d} className="py-3 text-center text-sm font-semibold text-gray-400">{d}</div>
+              ))}
+            </div>
+            {weeks.map((week, wi) => (
+              <div key={wi} className="grid grid-cols-7" style={{ minHeight: '100px' }}>
+                {week.map((d, di) => {
+                  const dayTaskList = getTasksForDate(d);
+                  const pending = dayTaskList.filter(t => t.status === 'pending');
+                  const completed = dayTaskList.filter(t => t.status === 'completed');
+                  const isSelected = isSameDay(d, selectedDate);
+                  const isCurrentMonth = isSameMonth(d, currentMonth);
+                  const todayFlag = isToday(d);
+                  const isWeekend = di >= 5;
 
-                {/* Quick add */}
-                <div className="mt-3 flex gap-2">
-                  <input
-                    value={newTaskTitle}
-                    onChange={e => setNewTaskTitle(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleQuickAdd()}
-                    placeholder="快速添加任务..."
-                    className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all bg-gray-50/50"
-                  />
-                  <button
-                    onClick={handleQuickAdd}
-                    disabled={!newTaskTitle.trim() || quickAdding}
-                    className="w-10 h-10 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-40 flex items-center justify-center flex-shrink-0"
-                  >
-                    {quickAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Task list for selected day */}
-              <div className="flex-1 overflow-y-auto px-4 py-3">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-                  </div>
-                ) : dayTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in">
-                    <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                      <Calendar className="w-7 h-7 text-gray-300" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-400">这天还没有任务</p>
-                    <p className="text-xs text-gray-300 mt-1">输入上方快速添加，或点 + 详细设置</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 animate-fade-in">
-                    {/* Pending tasks */}
-                    {pendingDay.length > 0 && (
-                      <div className="space-y-2">
-                        {pendingDay.map(task => {
-                          const cat = categories.find(c => c.id === task.category_id);
-                          const subs = getSubtasksForTask(task.id);
-                          const completedSubs = subs.filter(s => s.status === 'completed').length;
-                          return (
-                            <div
-                              key={task.id}
-                              onClick={() => { setEditingTask(task); setShowModal(true); }}
-                              className="group p-3.5 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-150"
-                            >
-                              <div className="flex items-start gap-3">
-                                <button onClick={e => { e.stopPropagation(); toggleTask(task.id); }}
-                                  className="mt-0.5 flex-shrink-0 active:scale-90 transition-transform">
-                                  <Circle className="w-5 h-5 text-gray-300 group-hover:text-blue-400 transition-colors" />
-                                </button>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-semibold text-gray-800 leading-snug flex-1 truncate">{task.title}</p>
-                                    <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded-full flex-shrink-0', PRIORITY_COLOR[task.priority])}>
-                                      {PRIORITY_LABEL[task.priority]}
-                                    </span>
-                                  </div>
-                                  {task.description && (
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</p>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-1.5">
-                                    {cat && (
-                                      <span className="flex items-center gap-1 text-xs text-gray-400">
-                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                                        {cat.name}
-                                      </span>
-                                    )}
-                                    {subs.length > 0 && (
-                                      <span className="text-xs text-gray-400">{completedSubs}/{subs.length} 子任务</span>
-                                    )}
-                                  </div>
-                                  {subs.length > 0 && (
-                                    <div className="mt-1.5 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                      <div className="h-full bg-blue-400 rounded-full transition-all duration-500"
-                                        style={{ width: `${(completedSubs / subs.length) * 100}%` }} />
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                  return (
+                    <button
+                      key={di}
+                      onClick={() => setSelectedDate(d)}
+                      className={cn(
+                        'relative p-2 text-left border-b border-r border-gray-50 transition-all duration-150 hover:bg-blue-50/60',
+                        isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-300' : '',
+                        !isCurrentMonth ? 'opacity-30' : '',
+                        isWeekend && isCurrentMonth ? 'bg-gray-50/50' : '',
+                      )}
+                    >
+                      <span className={cn(
+                        'inline-flex items-center justify-center w-8 h-8 text-sm font-semibold rounded-full mb-1',
+                        todayFlag ? 'bg-blue-500 text-white shadow-md shadow-blue-200' : 'text-gray-700',
+                        isSelected && !todayFlag ? 'bg-blue-100 text-blue-700' : '',
+                        isWeekend && !todayFlag && !isSelected ? 'text-gray-400' : '',
+                      )}>
+                        {format(d, 'd')}
+                      </span>
+                      <div className="space-y-0.5">
+                        {pending.slice(0, 3).map(t => (
+                          <div key={t.id} className={cn(
+                            'flex items-center gap-1 text-xs rounded-md px-1.5 py-0.5 truncate font-medium',
+                            t.priority === 'high' ? 'bg-red-50 text-red-600' :
+                            t.priority === 'medium' ? 'bg-amber-50 text-amber-700' :
+                            'bg-emerald-50 text-emerald-700'
+                          )}>
+                            <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', PRIORITY_DOT[t.priority])} />
+                            <span className="truncate">{t.title}</span>
+                          </div>
+                        ))}
+                        {pending.length > 3 && <div className="text-xs text-gray-400 px-1">+{pending.length - 3} 个</div>}
+                        {pending.length === 0 && completed.length > 0 && (
+                          <div className="text-xs text-emerald-500 px-1">✓ {completed.length}</div>
+                        )}
                       </div>
-                    )}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
 
-                    {/* Completed tasks */}
-                    {completedDay.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">已完成</p>
-                        <div className="space-y-1.5">
-                          {completedDay.map(task => (
-                            <div key={task.id}
-                              onClick={() => { setEditingTask(task); setShowModal(true); }}
-                              className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors opacity-60">
-                              <button onClick={e => { e.stopPropagation(); toggleTask(task.id); }}
-                                className="flex-shrink-0 active:scale-90 transition-transform">
-                                <CheckCircle2 className="w-5 h-5 text-blue-400" />
-                              </button>
-                              <span className="text-sm text-gray-500 line-through truncate flex-1">{task.title}</span>
+        {/* === DAY PANEL === */}
+        <div className="w-80 flex-shrink-0 flex flex-col bg-white overflow-hidden">
+          {/* Day header */}
+          <div className="px-5 py-5 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {isToday(selectedDate) ? '今天' : format(selectedDate, 'M月d日', { locale: zhCN })}
+                </h2>
+                <p className="text-sm text-gray-400 mt-0.5">
+                  {format(selectedDate, 'EEEE', { locale: zhCN })} · {pendingDay.length} 待办
+                  {completedDay.length > 0 ? ` · ${completedDay.length} 完成` : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => { setEditingTask(null); setShowModal(true); }}
+                className="w-9 h-9 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md shadow-blue-200 flex items-center justify-center active:scale-95"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Quick add */}
+            <div className="mt-3 flex gap-2">
+              <input
+                value={newTaskTitle}
+                onChange={e => setNewTaskTitle(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleQuickAdd()}
+                placeholder="快速添加任务..."
+                className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all bg-gray-50/50"
+              />
+              <button
+                onClick={handleQuickAdd}
+                disabled={!newTaskTitle.trim() || quickAdding}
+                className="w-10 h-10 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-40 flex items-center justify-center flex-shrink-0"
+              >
+                {quickAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Task list */}
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+              </div>
+            ) : dayTasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in">
+                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <Calendar className="w-7 h-7 text-gray-300" />
+                </div>
+                <p className="text-sm font-medium text-gray-400">这天还没有任务</p>
+                <p className="text-xs text-gray-300 mt-1">输入上方快速添加，或点 + 详细设置</p>
+              </div>
+            ) : (
+              <div className="space-y-2 animate-fade-in">
+                {pendingDay.map(task => {
+                  const cat = categories.find(c => c.id === task.category_id);
+                  const subs = getSubtasksForTask(task.id);
+                  const completedSubs = subs.filter(s => s.status === 'completed').length;
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={() => { setEditingTask(task); setShowModal(true); }}
+                      className="group p-3.5 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-150"
+                    >
+                      <div className="flex items-start gap-3">
+                        <button onClick={e => { e.stopPropagation(); toggleTask(task.id); }}
+                          className="mt-0.5 flex-shrink-0 active:scale-90 transition-transform">
+                          <Circle className="w-5 h-5 text-gray-300 group-hover:text-blue-400 transition-colors" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-800 leading-snug flex-1 truncate">{task.title}</p>
+                            <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded-full flex-shrink-0', PRIORITY_COLOR[task.priority])}>
+                              {PRIORITY_LABEL[task.priority]}
+                            </span>
+                          </div>
+                          {task.description && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</p>}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            {cat && (
+                              <span className="flex items-center gap-1 text-xs text-gray-400">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                                {cat.name}
+                              </span>
+                            )}
+                            {subs.length > 0 && <span className="text-xs text-gray-400">{completedSubs}/{subs.length} 子任务</span>}
+                          </div>
+                          {subs.length > 0 && (
+                            <div className="mt-1.5 h-1 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-400 rounded-full transition-all duration-500"
+                                style={{ width: `${(completedSubs / subs.length) * 100}%` }} />
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
-                    )}
+                    </div>
+                  );
+                })}
+
+                {completedDay.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">已完成</p>
+                    <div className="space-y-1.5">
+                      {completedDay.map(task => (
+                        <div key={task.id}
+                          onClick={() => { setEditingTask(task); setShowModal(true); }}
+                          className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors opacity-60">
+                          <button onClick={e => { e.stopPropagation(); toggleTask(task.id); }}
+                            className="flex-shrink-0 active:scale-90 transition-transform">
+                            <CheckCircle2 className="w-5 h-5 text-blue-400" />
+                          </button>
+                          <span className="text-sm text-gray-500 line-through truncate flex-1">{task.title}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* === MEMO DRAWER (overlay, doesn't replace calendar) === */}
+        {showMemo && (
+          <>
+            <div
+              className="absolute inset-0 bg-black/25 z-20 animate-fade-in"
+              onClick={() => setShowMemo(false)}
+            />
+            <div className="absolute right-0 top-0 bottom-0 w-96 bg-white shadow-2xl z-30 flex flex-col animate-slide-up">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <StickyNote className="w-5 h-5 text-amber-500" />
+                  <span className="text-base font-bold text-gray-900">备忘录</span>
+                </div>
+                <button
+                  onClick={() => setShowMemo(false)}
+                  className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <MemoPanel userId={user!.id} />
               </div>
             </div>
           </>
