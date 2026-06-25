@@ -79,3 +79,8 @@ html.dark .border-gray-100 { border-color: rgb(40 40 55) !important; }
 html.dark .border-gray-200 { border-color: rgb(50 50 65) !important; }
 html.dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
 html.dark .shadow-xl { box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important; }
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}

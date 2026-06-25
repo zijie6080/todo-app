@@ -426,33 +426,35 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* === MEMO DRAWER (overlay, doesn't replace calendar) === */}
-        {showMemo && (
-          <>
-            <div
-              className="absolute inset-0 bg-black/25 z-20 animate-fade-in"
-              onClick={() => setShowMemo(false)}
-            />
-            <div className="absolute right-0 top-0 bottom-0 w-96 bg-white shadow-2xl z-30 flex flex-col animate-slide-up">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <StickyNote className="w-5 h-5 text-amber-500" />
-                  <span className="text-base font-bold text-gray-900">备忘录</span>
-                </div>
-                <button
-                  onClick={() => setShowMemo(false)}
-                  className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-auto">
-                <MemoPanel userId={user!.id} />
-              </div>
-            </div>
-          </>
-        )}
       </main>
+
+      {/* === MEMO DRAWER (fixed overlay over entire page) === */}
+      {showMemo && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/30 z-40 animate-fade-in"
+            onClick={() => setShowMemo(false)}
+          />
+          <div className="fixed right-0 top-0 bottom-0 w-[420px] bg-white shadow-2xl z-50 flex flex-col"
+            style={{ animation: 'slideInRight 0.25s ease-out' }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <StickyNote className="w-5 h-5 text-amber-500" />
+                <span className="text-base font-bold text-gray-900">备忘录</span>
+              </div>
+              <button
+                onClick={() => setShowMemo(false)}
+                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <MemoPanel userId={user!.id} />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Modals */}
       {showModal && (
